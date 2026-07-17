@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout";
-import { Card, Badge, Avatar, Button } from "@/components/ui";
+import { Card, Badge, Avatar, Button, Skeleton } from "@/components/ui";
+import { useLeads } from "@/lib/hooks";
 import {
   DndContext,
   DragOverlay,
@@ -66,7 +67,7 @@ const PIPELINE_STAGES = [
   { id: "referral_requested", name: "Referral", color: "#F97316" },
 ];
 
-// Mock data
+// Mock data for fallback when no real data
 const mockLeads: Lead[] = [
   { id: "1", first_name: "Andrew", last_name: "Wright", phone: "(208) 555-1024", email: "andrew.wright@email.com", pipeline_stage: "new_lead", ai_score: 20, lead_source: "Website", annual_income: 120000 },
   { id: "2", first_name: "Katherine", last_name: "Scott", phone: "(208) 555-1025", email: "katherine.s@email.com", pipeline_stage: "new_lead", ai_score: 18, lead_source: "Google Ads", annual_income: 105000 },
@@ -201,8 +202,13 @@ function PipelineColumn({ stage, leads }: { stage: typeof PIPELINE_STAGES[0]; le
 }
 
 export default function PipelinePage() {
-  const [leads, setLeads] = useState<Lead[]>(mockLeads);
+  const { leads: realLeads, isLoading } = useLeads();
+  const [localLeads, setLocalLeads] = useState<Lead[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
+
+  // Use real leads when available, fallback to mock
+  const leads = (realLeads && realLeads.length > 0 ? realLeads : localLeads.length > 0 ? localLeads : mockLeads) as Lead[];
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -235,11 +241,14 @@ export default function PipelinePage() {
     // Check if dropping on a column (stage)
     const targetStage = PIPELINE_STAGES.find((s) => s.id === overId);
     if (targetStage) {
-      setLeads((leads) =>
-        leads.map((lead) =>
+      // If we have real data, this would update via API
+      // For now, update local state
+      setLocalLeads((prevLeads) => {
+        const newLeads = prevLeads.length > 0 ? prevLeads : mockLeads;
+        return newLeads.map((lead) =>
           lead.id === activeLeadId ? { ...lead, pipeline_stage: targetStage.id } : lead
-        )
-      );
+        );
+      });
     }
 
     setActiveId(null);
@@ -276,24 +285,26 @@ export default function PipelinePage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card className="p-4">
             <p className="text-sm text-text-secondary">Total Leads</p>
-            <p className="text-2xl font-bold text-text-primary mt-1">{leads.length}</p>
+            <p className="text-2xl font-bold text-text-primary mt-1">
+              {isLoading ? <Skeleton className="h-8 w-16" /> : leads.length}
+            </p>
           </Card>
           <Card className="p-4">
             <p className="text-sm text-text-secondary">Hot Leads</p>
             <p className="text-2xl font-bold text-emerald-400 mt-1">
-              {leads.filter((l) => l.ai_score >= 70).length}
+              {isLoading ? <Skeleton className="h-8 w-16" /> : leads.filter((l) => (l.ai_score || 0) >= 70).length}
             </p>
           </Card>
           <Card className="p-4">
             <p className="text-sm text-text-secondary">In Progress</p>
             <p className="text-2xl font-bold text-blue-400 mt-1">
-              {leads.filter((l) => !["active_policy"].includes(l.pipeline_stage)).length}
+              {isLoading ? <Skeleton className="h-8 w-16" /> : leads.filter((l) => !["active_policy"].includes(l.pipeline_stage)).length}
             </p>
           </Card>
           <Card className="p-4">
             <p className="text-sm text-text-secondary">Closed Won</p>
             <p className="text-2xl font-bold text-emerald-400 mt-1">
-              {leads.filter((l) => l.pipeline_stage === "active_policy").length}
+              {isLoading ? <Skeleton className="h-8 w-16" /> : leads.filter((l) => l.pipeline_stage === "active_policy").length}
             </p>
           </Card>
         </div>

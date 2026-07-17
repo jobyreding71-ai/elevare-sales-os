@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/layout";
-import { Card, Button, Input, Badge, Avatar, Modal, Tabs } from "@/components/ui";
+import { Card, Button, Input, Badge, Avatar, Modal, Tabs, Skeleton } from "@/components/ui";
 import { useLeads } from "@/lib/hooks";
 import { cn, formatPhoneNumber, formatDate, getAIScoreColor, getAIScoreBgColor } from "@/lib/utils";
 import {
@@ -26,138 +26,32 @@ export default function LeadsPage() {
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
 
-  // Using the useLeads hook - in production, this would fetch real data
-  const { leads, isLoading, error } = useLeads();
+  // Using the useLeads hook for real data
+  const { leads, isLoading, error, refetch } = useLeads();
 
-  // Mock data for demonstration
-  const mockLeads = [
-    {
-      id: "1",
-      first_name: "Jennifer",
-      last_name: "Martinez",
-      phone: "(208) 555-1001",
-      email: "jennifer.martinez@email.com",
-      pipeline_stage: "active_policy",
-      ai_score: 92,
-      lead_source: "Referral",
-      annual_income: 125000,
-      created_at: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-      state: "ID",
-    },
-    {
-      id: "2",
-      first_name: "Robert",
-      last_name: "Anderson",
-      phone: "(208) 555-1002",
-      email: "robert.anderson@email.com",
-      pipeline_stage: "active_policy",
-      ai_score: 88,
-      lead_source: "Facebook Ads",
-      annual_income: 285000,
-      created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-      state: "ID",
-    },
-    {
-      id: "3",
-      first_name: "Christopher",
-      last_name: "Wilson",
-      phone: "(208) 555-1006",
-      email: "chris.wilson@email.com",
-      pipeline_stage: "underwriting",
-      ai_score: 78,
-      lead_source: "Website",
-      annual_income: 320000,
-      created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-      state: "ID",
-    },
-    {
-      id: "4",
-      first_name: "Michael",
-      last_name: "Johnson",
-      phone: "(208) 555-1008",
-      email: "michael.j@email.com",
-      pipeline_stage: "application_submitted",
-      ai_score: 75,
-      lead_source: "Google Ads",
-      annual_income: 210000,
-      created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-      state: "ID",
-    },
-    {
-      id: "5",
-      first_name: "William",
-      last_name: "Chen",
-      phone: "(208) 555-1010",
-      email: "william.chen@email.com",
-      pipeline_stage: "quoted",
-      ai_score: 68,
-      lead_source: "Referral",
-      annual_income: 450000,
-      created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-      state: "ID",
-    },
-    {
-      id: "6",
-      first_name: "Sarah",
-      last_name: "Brown",
-      phone: "(208) 555-1013",
-      email: "sarah.brown@email.com",
-      pipeline_stage: "needs_analysis",
-      ai_score: 58,
-      lead_source: "Website",
-      annual_income: 175000,
-      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      state: "ID",
-    },
-    {
-      id: "7",
-      first_name: "Thomas",
-      last_name: "White",
-      phone: "(208) 555-1016",
-      email: "thomas.white@email.com",
-      pipeline_stage: "appointment_scheduled",
-      ai_score: 52,
-      lead_source: "Lead Gen Partner",
-      annual_income: 140000,
-      created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      state: "ID",
-    },
-    {
-      id: "8",
-      first_name: "Andrew",
-      last_name: "Wright",
-      phone: "(208) 555-1024",
-      email: "andrew.wright@email.com",
-      pipeline_stage: "new_lead",
-      ai_score: 20,
-      lead_source: "Website",
-      annual_income: 120000,
-      created_at: new Date().toISOString(),
-      state: "ID",
-    },
-  ];
-
-  const filteredLeads = mockLeads.filter((lead) => {
+  // Filter leads based on search and tab
+  const filteredLeads = (leads || []).filter((lead: any) => {
     const matchesSearch =
       searchQuery === "" ||
       `${lead.first_name} ${lead.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.phone.includes(searchQuery);
+      (lead.email && lead.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (lead.phone && lead.phone.includes(searchQuery));
 
+    const aiScore = lead.ai_score || 0;
     const matchesTab =
       activeTab === "all" ||
-      (activeTab === "hot" && lead.ai_score >= 70) ||
-      (activeTab === "warm" && lead.ai_score >= 40 && lead.ai_score < 70) ||
-      (activeTab === "cold" && lead.ai_score < 40);
+      (activeTab === "hot" && aiScore >= 70) ||
+      (activeTab === "warm" && aiScore >= 40 && aiScore < 70) ||
+      (activeTab === "cold" && aiScore < 40);
 
     return matchesSearch && matchesTab;
   });
 
   const tabs = [
-    { id: "all", label: "All Leads", count: mockLeads.length },
-    { id: "hot", label: "Hot (70+)", count: mockLeads.filter((l) => l.ai_score >= 70).length },
-    { id: "warm", label: "Warm (40-69)", count: mockLeads.filter((l) => l.ai_score >= 40 && l.ai_score < 70).length },
-    { id: "cold", label: "Cold (<40)", count: mockLeads.filter((l) => l.ai_score < 40).length },
+    { id: "all", label: "All Leads", count: leads?.length || 0 },
+    { id: "hot", label: "Hot (70+)", count: leads?.filter((l: any) => (l.ai_score || 0) >= 70).length || 0 },
+    { id: "warm", label: "Warm (40-69)", count: leads?.filter((l: any) => (l.ai_score || 0) >= 40 && (l.ai_score || 0) < 70).length || 0 },
+    { id: "cold", label: "Cold (<40)", count: leads?.filter((l: any) => (l.ai_score || 0) < 40).length || 0 },
   ];
 
   const getStageName = (stage: string) => {
@@ -253,107 +147,134 @@ export default function LeadsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredLeads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className="hover:bg-surface/50 transition-colors cursor-pointer"
-                    onClick={() => (window.location.href = `/leads/${lead.id}`)}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          name={`${lead.first_name} ${lead.last_name}`}
-                          size="md"
-                        />
-                        <div>
-                          <p className="font-medium text-text-primary">
-                            {lead.first_name} {lead.last_name}
-                          </p>
-                          <p className="text-sm text-text-muted flex items-center gap-2">
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              {formatPhoneNumber(lead.phone)}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Mail className="w-3 h-3" />
-                              {lead.email}
-                            </span>
-                          </p>
+                {isLoading ? (
+                  // Loading skeleton
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="w-10 h-10 rounded-full" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-48" />
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={cn(
-                            "w-10 h-10 rounded-lg flex items-center justify-center font-bold",
-                            getAIScoreBgColor(lead.ai_score),
-                            getAIScoreColor(lead.ai_score)
+                      </td>
+                      <td className="px-6 py-4"><Skeleton className="h-10 w-10 rounded-lg" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-24" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-8 w-24" /></td>
+                    </tr>
+                  ))
+                ) : filteredLeads.length > 0 ? (
+                  filteredLeads.map((lead: any) => (
+                    <tr
+                      key={lead.id}
+                      className="hover:bg-surface/50 transition-colors cursor-pointer"
+                      onClick={() => (window.location.href = `/leads/${lead.id}`)}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            name={`${lead.first_name} ${lead.last_name}`}
+                            size="md"
+                          />
+                          <div>
+                            <p className="font-medium text-text-primary">
+                              {lead.first_name} {lead.last_name}
+                            </p>
+                            <p className="text-sm text-text-muted flex items-center gap-2">
+                              {lead.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="w-3 h-3" />
+                                  {formatPhoneNumber(lead.phone)}
+                                </span>
+                              )}
+                              {lead.email && (
+                                <span className="flex items-center gap-1">
+                                  <Mail className="w-3 h-3" />
+                                  {lead.email}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "w-10 h-10 rounded-lg flex items-center justify-center font-bold",
+                              getAIScoreBgColor(lead.ai_score || 0),
+                              getAIScoreColor(lead.ai_score || 0)
+                            )}
+                          >
+                            {lead.ai_score || 0}
+                          </div>
+                          {(lead.ai_score || 0) >= 70 && (
+                            <Sparkles className="w-4 h-4 text-yellow-400" />
                           )}
-                        >
-                          {lead.ai_score}
                         </div>
-                        {lead.ai_score >= 70 && (
-                          <Sparkles className="w-4 h-4 text-yellow-400" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge className={getStageColor(lead.pipeline_stage)}>
-                        {getStageName(lead.pipeline_stage)}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-text-secondary">{lead.lead_source}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-text-primary font-medium">
-                        ${lead.annual_income.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-text-muted">
-                        {formatDate(lead.created_at)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          className="p-2 text-text-muted hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Handle call
-                          }}
-                        >
-                          <Phone className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-text-muted hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Handle email
-                          }}
-                        >
-                          <Mail className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-text-muted hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Handle more
-                          }}
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge className={getStageColor(lead.pipeline_stage || "new_lead")}>
+                          {getStageName(lead.pipeline_stage || "new_lead")}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-text-secondary">{lead.lead_source || "Unknown"}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-text-primary font-medium">
+                          {lead.annual_income ? `$${lead.annual_income.toLocaleString()}` : "-"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-text-muted">
+                          {formatDate(lead.created_at)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            className="p-2 text-text-muted hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle call
+                            }}
+                          >
+                            <Phone className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="p-2 text-text-muted hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle email
+                            }}
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="p-2 text-text-muted hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle more
+                            }}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : null}
               </tbody>
             </table>
           </div>
 
-          {filteredLeads.length === 0 && (
+          {!isLoading && filteredLeads.length === 0 && (
             <div className="py-16 text-center">
               <Users className="w-12 h-12 text-text-muted mx-auto mb-4" />
               <h3 className="text-lg font-medium text-text-primary mb-2">No leads found</h3>

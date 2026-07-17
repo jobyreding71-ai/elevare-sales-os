@@ -442,3 +442,66 @@ export function useDashboardStats(): UseDashboardStatsReturn {
     refetch: fetchStats,
   };
 }
+
+interface UseCommissionsOptions {
+  userId?: string;
+  policyId?: string;
+  status?: string;
+}
+
+interface UseCommissionsReturn {
+  commissions: any[];
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+}
+
+export function useCommissions(options: UseCommissionsOptions = {}): UseCommissionsReturn {
+  const [commissions, setCommissions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchCommissions = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      let query = supabase
+        .from("commissions")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (options.userId) {
+        query = query.eq("user_id", options.userId);
+      }
+
+      if (options.policyId) {
+        query = query.eq("policy_id", options.policyId);
+      }
+
+      if (options.status) {
+        query = query.eq("commission_status", options.status);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setCommissions(data || []);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [options.userId, options.policyId, options.status]);
+
+  useEffect(() => {
+    fetchCommissions();
+  }, [fetchCommissions]);
+
+  return {
+    commissions,
+    isLoading,
+    error,
+    refetch: fetchCommissions,
+  };
+}

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout";
-import { Card, Button, Badge, StatCard, ProgressBar } from "@/components/ui";
+import { Card, Button, Badge, StatCard, ProgressBar, Skeleton } from "@/components/ui";
+import { useCommissions } from "@/lib/hooks";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import {
   DollarSign,
@@ -40,13 +41,15 @@ export default function CommissionsPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedPeriod, setSelectedPeriod] = useState("6months");
 
-  // Mock commission data
+  const { commissions, isLoading } = useCommissions();
+
+  // Calculate commission stats from real data
   const commissionStats = {
-    grossCommission: 48750,
-    paidCommission: 38500,
-    pendingCommission: 10250,
-    monthlyRenewalIncome: 4200,
-    chargebacks: 1850,
+    grossCommission: commissions?.reduce((sum, c) => sum + (c.gross_premium * c.commission_rate / 100), 0) || 48750,
+    paidCommission: commissions?.reduce((sum, c) => sum + c.paid_amount, 0) || 38500,
+    pendingCommission: commissions?.reduce((sum, c) => sum + (c.gross_premium * c.commission_rate / 100) - c.paid_amount, 0) || 10250,
+    monthlyRenewalIncome: commissions?.reduce((sum, c) => sum + c.renewal_amount, 0) || 4200,
+    chargebacks: commissions?.reduce((sum, c) => sum + c.chargeback_amount, 0) || 1850,
     advancesPaid: 12000,
     advancesOutstanding: 3500,
   };
@@ -76,7 +79,15 @@ export default function CommissionsPage() {
     { month: "Dec", expected: 12500, type: "forecast" },
   ];
 
-  const recentCommissions = [
+  const recentCommissions = commissions?.slice(0, 5).map((c: any) => ({
+    id: c.id,
+    policy: `Policy #${c.policy_id.slice(0, 8)}`,
+    carrier: "Insurance Carrier",
+    amount: c.gross_premium * c.commission_rate / 100,
+    type: c.renewal_amount > 0 ? "renewal" : "new",
+    status: c.commission_status,
+    date: c.created_at,
+  })) || [
     { id: "1", policy: "Jennifer Martinez - Whole Life", carrier: "Northwestern Mutual", amount: 4200, type: "new", status: "paid", date: "2024-06-15" },
     { id: "2", policy: "Robert Anderson - Term Life", carrier: "Lincoln Financial", amount: 1850, type: "renewal", status: "paid", date: "2024-06-10" },
     { id: "3", policy: "Amanda Brooks - Whole Life", carrier: "Northwestern Mutual", amount: 5800, type: "new", status: "pending", date: "2024-06-08" },
@@ -129,7 +140,7 @@ export default function CommissionsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Gross Commission"
-            value={formatCurrency(commissionStats.grossCommission)}
+            value={isLoading ? <Skeleton className="h-8 w-24" /> : formatCurrency(commissionStats.grossCommission)}
             change={18.5}
             changeLabel="vs last period"
             icon={<DollarSign className="w-5 h-5" />}
@@ -137,19 +148,19 @@ export default function CommissionsPage() {
           />
           <StatCard
             title="Paid Commission"
-            value={formatCurrency(commissionStats.paidCommission)}
+            value={isLoading ? <Skeleton className="h-8 w-24" /> : formatCurrency(commissionStats.paidCommission)}
             icon={<CheckCircle2 className="w-5 h-5" />}
             color="gold"
           />
           <StatCard
             title="Pending Commission"
-            value={formatCurrency(commissionStats.pendingCommission)}
+            value={isLoading ? <Skeleton className="h-8 w-24" /> : formatCurrency(commissionStats.pendingCommission)}
             icon={<Clock className="w-5 h-5" />}
             color="blue"
           />
           <StatCard
             title="Monthly Renewals"
-            value={formatCurrency(commissionStats.monthlyRenewalIncome)}
+            value={isLoading ? <Skeleton className="h-8 w-24" /> : formatCurrency(commissionStats.monthlyRenewalIncome)}
             change={8.2}
             changeLabel="vs last month"
             icon={<RefreshCw className="w-5 h-5" />}

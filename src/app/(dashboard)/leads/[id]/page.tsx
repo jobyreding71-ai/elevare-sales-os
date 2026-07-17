@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/layout";
-import { Card, Button, Badge, Avatar, Modal, Input, Tabs } from "@/components/ui";
+import { Card, Button, Badge, Avatar, Modal, Input, Tabs, Skeleton } from "@/components/ui";
+import { useLead, useTasks } from "@/lib/hooks";
 import {
   cn,
   formatPhoneNumber,
@@ -34,40 +35,7 @@ import {
   Target,
 } from "lucide-react";
 
-interface Call {
-  id: string;
-  duration: string;
-  date: string;
-  summary: string;
-  sentiment: "positive" | "neutral" | "negative";
-}
-
-interface Task {
-  id: string;
-  title: string;
-  dueDate: string;
-  completed: boolean;
-  priority: "low" | "medium" | "high";
-}
-
-interface Activity {
-  id: string;
-  type: "call" | "sms" | "email" | "note" | "appointment" | "stage_change";
-  content: string;
-  date: string;
-}
-
-interface Policy {
-  id: string;
-  carrier: string;
-  product: string;
-  faceAmount: number;
-  annualPremium: number;
-  status: string;
-  issueDate: string;
-}
-
-// Mock data for demonstration
+// Mock data for fallback
 const mockLead = {
   id: "1",
   first_name: "Jennifer",
@@ -88,48 +56,9 @@ const mockLead = {
   created_at: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
 };
 
-const mockCalls: Call[] = [
-  {
-    id: "1",
-    duration: "30:45",
-    date: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000).toISOString(),
-    summary: "Initial discovery call completed. Jennifer expressed strong interest in whole life coverage. Key concerns include college fund for children and mortgage protection.",
-    sentiment: "positive",
-  },
-  {
-    id: "2",
-    duration: "45:20",
-    date: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
-    summary: "Follow-up call to discuss specific coverage amounts. Jennifer is very engaged and has done research on different policy types.",
-    sentiment: "positive",
-  },
-];
-
-const mockTasks: Task[] = [
-  { id: "1", title: "Send anniversary gift", dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), completed: false, priority: "low" },
-  { id: "2", title: "Schedule annual review", dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), completed: false, priority: "medium" },
-];
-
-const mockActivities: Activity[] = [
-  { id: "1", type: "call", content: "Initial discovery call completed - 30 minutes", date: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: "2", type: "appointment", content: "Needs analysis meeting at Starbucks", date: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: "3", type: "email", content: "Sent IUL product information brochure", date: new Date(Date.now() - 38 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: "4", type: "stage_change", content: "Pipeline stage updated: Needs Analysis → Quoted", date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: "5", type: "note", content: "Application submitted for $500K Whole Life", date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: "6", type: "stage_change", content: "Pipeline stage updated: Application Submitted → Underwriting", date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: "7", type: "stage_change", content: "Pipeline stage updated: Underwriting → Active Policy", date: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString() },
-];
-
-const mockPolicies: Policy[] = [
-  {
-    id: "1",
-    carrier: "Northwestern Mutual",
-    product: "Whole Life",
-    faceAmount: 500000,
-    annualPremium: 8400,
-    status: "Active",
-    issueDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-  },
+const mockTasks = [
+  { id: "1", title: "Send anniversary gift", due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), completed: false, priority: "low" },
+  { id: "2", title: "Schedule annual review", due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), completed: false, priority: "medium" },
 ];
 
 const aiInsights = {
@@ -140,10 +69,56 @@ const aiInsights = {
   similarCases: 12,
 };
 
-export default function LeadDetailPage() {
+export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLogCallOpen, setIsLogCallOpen] = useState(false);
+
+  const { lead, isLoading } = useLead(resolvedParams.id);
+  const { tasks } = useTasks({ leadId: resolvedParams.id });
+
+  // Use real lead data or fallback to mock
+  const leadData = lead || mockLead;
+  const tasksData = tasks && tasks.length > 0 ? tasks : mockTasks;
+
+  // Mock calls for demonstration
+  const mockCalls = [
+    {
+      id: "1",
+      duration: "30:45",
+      date: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000).toISOString(),
+      summary: "Initial discovery call completed. Jennifer expressed strong interest in whole life coverage. Key concerns include college fund for children and mortgage protection.",
+      sentiment: "positive" as const,
+    },
+    {
+      id: "2",
+      duration: "45:20",
+      date: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
+      summary: "Follow-up call to discuss specific coverage amounts. Jennifer is very engaged and has done research on different policy types.",
+      sentiment: "positive" as const,
+    },
+  ];
+
+  const mockActivities = [
+    { id: "1", type: "call" as const, content: "Initial discovery call completed - 30 minutes", date: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "2", type: "appointment" as const, content: "Needs analysis meeting at Starbucks", date: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "3", type: "email" as const, content: "Sent IUL product information brochure", date: new Date(Date.now() - 38 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "4", type: "stage_change" as const, content: "Pipeline stage updated: Needs Analysis → Quoted", date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "5", type: "note" as const, content: "Application submitted for $500K Whole Life", date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString() },
+  ];
+
+  const mockPolicies = [
+    {
+      id: "1",
+      carrier: "Northwestern Mutual",
+      product: "Whole Life",
+      faceAmount: 500000,
+      annualPremium: 8400,
+      status: "Active",
+      issueDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ];
 
   const getStageColor = (stage: string) => {
     const colors: Record<string, string> = {
@@ -195,6 +170,19 @@ export default function LeadDetailPage() {
     { id: "policies", label: "Policies", count: mockPolicies.length },
   ];
 
+  // Calculate age from date of birth if available
+  const calculateAge = (dob: string | null | undefined) => {
+    if (!dob) return 39; // Default fallback
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -210,35 +198,41 @@ export default function LeadDetailPage() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
           <div className="flex items-start gap-4">
-            <Avatar name={`${mockLead.first_name} ${mockLead.last_name}`} size="lg" />
+            {isLoading ? (
+              <Skeleton className="w-16 h-16 rounded-full" />
+            ) : (
+              <Avatar name={`${leadData.first_name} ${leadData.last_name}`} size="lg" />
+            )}
             <div>
               <h1 className="text-2xl font-bold text-text-primary">
-                {mockLead.first_name} {mockLead.last_name}
+                {isLoading ? <Skeleton className="h-8 w-48" /> : `${leadData.first_name} ${leadData.last_name}`}
               </h1>
               <div className="flex flex-wrap items-center gap-3 mt-2">
-                <Badge className={getStageColor(mockLead.pipeline_stage)}>
-                  {mockLead.pipeline_stage
+                <Badge className={getStageColor(leadData.pipeline_stage || "new_lead")}>
+                  {(leadData.pipeline_stage || "new_lead")
                     .split("_")
-                    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                    .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
                     .join(" ")}
                 </Badge>
                 <div className="flex items-center gap-2">
                   <div
                     className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold",
-                      getAIScoreBgColor(mockLead.ai_score),
-                      getAIScoreColor(mockLead.ai_score)
+                      getAIScoreBgColor(leadData.ai_score || 0),
+                      getAIScoreColor(leadData.ai_score || 0)
                     )}
                   >
                     <Sparkles className="w-5 h-5 mr-1" />
-                    {mockLead.ai_score}
+                    {isLoading ? <Skeleton className="w-8 h-8" /> : (leadData.ai_score || 0)}
                   </div>
                   <span className="text-sm text-text-secondary">AI Score</span>
                 </div>
-                <Badge variant="gold">
-                  <Star className="w-3 h-3 mr-1" />
-                  Premium Lead
-                </Badge>
+                {(leadData.ai_score || 0) >= 70 && (
+                  <Badge variant="gold">
+                    <Star className="w-3 h-3 mr-1" />
+                    Premium Lead
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
@@ -351,14 +345,14 @@ export default function LeadDetailPage() {
                     </Button>
                   </div>
                   <div className="space-y-3">
-                    {mockTasks.map((task) => (
+                    {tasksData.map((task: any) => (
                       <div
                         key={task.id}
                         className="flex items-center gap-3 p-3 rounded-lg bg-surface"
                       >
                         <input
                           type="checkbox"
-                          checked={task.completed}
+                          checked={task.completed || false}
                           className="w-5 h-5 rounded border-border bg-surface text-emerald-500 focus:ring-emerald-500"
                         />
                         <div className="flex-1">
@@ -373,7 +367,7 @@ export default function LeadDetailPage() {
                             {task.title}
                           </p>
                           <p className="text-xs text-text-muted mt-1">
-                            Due: {formatDate(task.dueDate)}
+                            Due: {task.due_date ? formatDate(task.due_date) : "No due date"}
                           </p>
                         </div>
                         <Badge
@@ -386,7 +380,7 @@ export default function LeadDetailPage() {
                           }
                           size="sm"
                         >
-                          {task.priority}
+                          {task.priority || "medium"}
                         </Badge>
                       </div>
                     ))}
@@ -529,10 +523,10 @@ export default function LeadDetailPage() {
                   <div>
                     <p className="text-xs text-text-muted">Phone</p>
                     <a
-                      href={`tel:${mockLead.phone}`}
+                      href={`tel:${leadData.phone || ""}`}
                       className="text-text-primary hover:text-emerald-400"
                     >
-                      {formatPhoneNumber(mockLead.phone)}
+                      {leadData.phone ? formatPhoneNumber(leadData.phone) : "-"}
                     </a>
                   </div>
                 </div>
@@ -541,10 +535,10 @@ export default function LeadDetailPage() {
                   <div>
                     <p className="text-xs text-text-muted">Email</p>
                     <a
-                      href={`mailto:${mockLead.email}`}
+                      href={`mailto:${leadData.email || ""}`}
                       className="text-text-primary hover:text-emerald-400"
                     >
-                      {mockLead.email}
+                      {leadData.email || "-"}
                     </a>
                   </div>
                 </div>
@@ -553,7 +547,7 @@ export default function LeadDetailPage() {
                   <div>
                     <p className="text-xs text-text-muted">Location</p>
                     <p className="text-text-primary">
-                      {mockLead.city}, {mockLead.state}
+                      {leadData.city || "N/A"}, {leadData.state || ""}
                     </p>
                   </div>
                 </div>
@@ -571,14 +565,14 @@ export default function LeadDetailPage() {
                     <Users className="w-4 h-4 text-text-muted" />
                     <span className="text-sm text-text-secondary">Marital Status</span>
                   </div>
-                  <span className="text-sm text-text-primary">{mockLead.marital_status}</span>
+                  <span className="text-sm text-text-primary">{leadData.marital_status || "-"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Users className="w-4 h-4 text-text-muted" />
                     <span className="text-sm text-text-secondary">Children</span>
                   </div>
-                  <span className="text-sm text-text-primary">{mockLead.children_count}</span>
+                  <span className="text-sm text-text-primary">{leadData.children_count ?? "-"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -586,7 +580,7 @@ export default function LeadDetailPage() {
                     <span className="text-sm text-text-secondary">Annual Income</span>
                   </div>
                   <span className="text-sm text-text-primary">
-                    ${mockLead.annual_income.toLocaleString()}
+                    {leadData.annual_income ? `$${leadData.annual_income.toLocaleString()}` : "-"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -594,14 +588,14 @@ export default function LeadDetailPage() {
                     <Briefcase className="w-4 h-4 text-text-muted" />
                     <span className="text-sm text-text-secondary">Occupation</span>
                   </div>
-                  <span className="text-sm text-text-primary">{mockLead.occupation}</span>
+                  <span className="text-sm text-text-primary">{leadData.occupation || "-"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Calendar className="w-4 h-4 text-text-muted" />
                     <span className="text-sm text-text-secondary">Age</span>
                   </div>
-                  <span className="text-sm text-text-primary">{mockLead.age} years old</span>
+                  <span className="text-sm text-text-primary">{calculateAge(leadData.date_of_birth)} years old</span>
                 </div>
               </div>
             </Card>
@@ -668,18 +662,18 @@ export default function LeadDetailPage() {
       >
         <form className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="First Name" defaultValue={mockLead.first_name} />
-            <Input label="Last Name" defaultValue={mockLead.last_name} />
+            <Input label="First Name" defaultValue={leadData.first_name} />
+            <Input label="Last Name" defaultValue={leadData.last_name} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Phone" defaultValue={mockLead.phone} />
-            <Input label="Email" type="email" defaultValue={mockLead.email} />
+            <Input label="Phone" defaultValue={leadData.phone || ""} />
+            <Input label="Email" type="email" defaultValue={leadData.email || ""} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="City" defaultValue={mockLead.city} />
-            <Input label="State" defaultValue={mockLead.state} />
+            <Input label="City" defaultValue={leadData.city || ""} />
+            <Input label="State" defaultValue={leadData.state || ""} />
           </div>
-          <Input label="Occupation" defaultValue={mockLead.occupation} />
+          <Input label="Occupation" defaultValue={leadData.occupation || ""} />
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="secondary" onClick={() => setIsEditOpen(false)}>
               Cancel

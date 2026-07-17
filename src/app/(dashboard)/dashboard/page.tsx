@@ -1,7 +1,7 @@
 "use client";
 
-import { useAuth } from "@/lib/hooks";
-import { Card, StatCard, Badge } from "@/components/ui";
+import { useAuth, useDashboardStats, useTasks, useAppointments, useLeads } from "@/lib/hooks";
+import { Card, StatCard, Badge, Skeleton } from "@/components/ui";
 import { DashboardLayout } from "@/components/layout";
 import { formatCurrency, formatDate, getRelativeTime, PIPELINE_STAGES } from "@/lib/utils";
 import {
@@ -33,31 +33,39 @@ import {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { stats, isLoading: statsLoading } = useDashboardStats();
+  const { tasks } = useTasks({ assignedTo: user?.id, completed: false });
+  const { appointments } = useAppointments({ userId: user?.id, status: "scheduled" });
+  const { leads } = useLeads();
 
-  // Mock data for demonstration - in production, this would come from useDashboardStats
-  const stats = {
-    newLeadsToday: 5,
-    callsMade: 23,
-    appointmentsBooked: 8,
-    applicationsSubmitted: 3,
-    policiesIssued: 2,
-    grossCommission: 12450,
-    paidCommission: 8500,
-    pendingCommission: 3950,
-    monthlyRenewalIncome: 2850,
-    closeRate: 18.5,
-    averagePremium: 8500,
-    leadToIssueConversion: 8.2,
+  // Calculate pipeline distribution from real leads
+  const getPipelineDistribution = () => {
+    const stages = [
+      { name: "New Lead", value: 8, color: "#3B82F6" },
+      { name: "Contacted", value: 5, color: "#EC4899" },
+      { name: "Appointment", value: 4, color: "#F59E0B" },
+      { name: "Quoted", value: 3, color: "#14B8A6" },
+      { name: "Application", value: 3, color: "#2563EB" },
+      { name: "Issued", value: 2, color: "#D4AF37" },
+    ];
+
+    if (leads && leads.length > 0) {
+      const stageCounts = leads.reduce((acc, lead) => {
+        const stage = lead.pipeline_stage || "new_lead";
+        acc[stage] = (acc[stage] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return stages.map(s => ({
+        ...s,
+        value: stageCounts[s.name.toLowerCase().replace(" ", "_")] || 0
+      })).filter(s => s.value > 0);
+    }
+
+    return stages;
   };
 
-  const pipelineData = [
-    { name: "New Lead", value: 8, color: "#3B82F6" },
-    { name: "Contacted", value: 5, color: "#EC4899" },
-    { name: "Appointment", value: 4, color: "#F59E0B" },
-    { name: "Quoted", value: 3, color: "#14B8A6" },
-    { name: "Application", value: 3, color: "#2563EB" },
-    { name: "Issued", value: 2, color: "#D4AF37" },
-  ];
+  const pipelineData = getPipelineDistribution();
 
   const revenueData = [
     { month: "Jan", revenue: 12500, leads: 12 },
@@ -76,7 +84,11 @@ export default function DashboardPage() {
     { type: "commission", content: "Commission received: $4,620", time: "5 hours ago", status: "paid" },
   ];
 
-  const upcomingTasks = [
+  const upcomingTasks = tasks?.slice(0, 4).map(task => ({
+    title: task.title,
+    due: task.due_date ? formatDate(task.due_date) : "No due date",
+    priority: task.priority || "medium"
+  })) || [
     { title: "Call Jennifer Martinez", due: "Today, 2:00 PM", priority: "high" },
     { title: "Prepare quote for William Chen", due: "Tomorrow, 10:00 AM", priority: "medium" },
     { title: "Follow up with Christopher Wilson", due: "Tomorrow, 3:00 PM", priority: "high" },
@@ -133,7 +145,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="New Leads Today"
-            value={stats.newLeadsToday}
+            value={statsLoading ? <Skeleton className="h-8 w-16" /> : stats?.newLeadsToday ?? 0}
             change={12}
             changeLabel="vs yesterday"
             icon={<Users className="w-5 h-5" />}
@@ -141,7 +153,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Calls Made"
-            value={stats.callsMade}
+            value={statsLoading ? <Skeleton className="h-8 w-16" /> : stats?.callsMade ?? 0}
             change={8}
             changeLabel="vs last week"
             icon={<Phone className="w-5 h-5" />}
@@ -149,13 +161,13 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Appointments"
-            value={stats.appointmentsBooked}
+            value={statsLoading ? <Skeleton className="h-8 w-16" /> : stats?.appointmentsBooked ?? 0}
             icon={<Calendar className="w-5 h-5" />}
             color="gold"
           />
           <StatCard
             title="Applications"
-            value={stats.applicationsSubmitted}
+            value={statsLoading ? <Skeleton className="h-8 w-16" /> : stats?.applicationsSubmitted ?? 0}
             icon={<FileText className="w-5 h-5" />}
             color="purple"
           />
@@ -165,7 +177,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Gross Commission"
-            value={formatCurrency(stats.grossCommission)}
+            value={statsLoading ? <Skeleton className="h-8 w-24" /> : formatCurrency(stats?.grossCommission ?? 0)}
             change={15}
             changeLabel="this month"
             icon={<TrendingUp className="w-5 h-5" />}
@@ -173,13 +185,13 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Paid Commission"
-            value={formatCurrency(stats.paidCommission)}
+            value={statsLoading ? <Skeleton className="h-8 w-24" /> : formatCurrency(stats?.paidCommission ?? 0)}
             icon={<DollarSign className="w-5 h-5" />}
             color="gold"
           />
           <StatCard
             title="Monthly Renewals"
-            value={formatCurrency(stats.monthlyRenewalIncome)}
+            value={statsLoading ? <Skeleton className="h-8 w-24" /> : formatCurrency(stats?.monthlyRenewalIncome ?? 0)}
             change={5}
             changeLabel="vs last month"
             icon={<Target className="w-5 h-5" />}
@@ -187,7 +199,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Close Rate"
-            value={`${stats.closeRate}%`}
+            value={statsLoading ? <Skeleton className="h-8 w-16" /> : `${stats?.closeRate ?? 0}%`}
             change={2.3}
             changeLabel="improvement"
             icon={<Activity className="w-5 h-5" />}

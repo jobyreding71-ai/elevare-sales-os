@@ -18,26 +18,101 @@ AI-Powered CRM and Sales Operating System for Life Insurance Agents
 - **AI**: OpenAI API for call analysis and coaching
 - **Deployment**: Vercel (recommended) or Netlify
 
-## Getting Started
+---
+
+## Quick Start Guide (Admin Setup)
+
+This app is designed for **personal use** with direct admin access - no trials, no limits.
+
+### Step 1: Create Supabase Project
+
+1. Go to [supabase.com](https://supabase.com) and create a free account
+2. Click **New Project**
+3. Set:
+   - **Name**: Elevare Sales OS
+   - **Database Password**: (copy this, you'll need it)
+   - **Region**: Choose closest to you
+4. Click **Create new project** and wait for setup (2-3 minutes)
+
+### Step 2: Get Your Supabase Credentials
+
+1. In your Supabase project, go to **Settings** → **API**
+2. Copy these values:
+   - **Project URL** (e.g., `https://xxxxx.supabase.co`)
+   - **anon/public** key under "Project API keys"
+   - **service_role** key (click "Reveal" to see it)
+
+### Step 3: Set Up Database Schema
+
+1. Go to **SQL Editor** in Supabase
+2. Copy and paste the contents of `supabase/migrations/001_initial_schema.sql`
+3. Click **Run** to create all tables
+
+### Step 4: Create Your Admin Account
+
+**Option A: Through Supabase Dashboard (Recommended)**
+
+1. Go to **Authentication** → **Users** → **Add user**
+2. Set your email and password
+3. Click **Create user**
+4. **IMPORTANT**: Copy the user's **ID** from the user list (UUID format)
+
+**Option B: Through SQL (Advanced)**
+
+```sql
+-- First create auth user via Dashboard, then run:
+INSERT INTO auth.users (id, email, encrypted_password, raw_user_meta_data)
+VALUES (
+  gen_random_uuid(),
+  'your-email@example.com',
+  crypt('your-password', gen_salt('bf')),
+  '{"full_name": "Your Name"}'
+);
+```
+
+### Step 5: Link Your Auth User to the App
+
+1. Open `supabase/migrations/002_seed_data.sql`
+2. Find `YOUR_AUTH_UID_HERE` and replace with your actual user ID
+3. Also update `your-email@example.com` with your email
+4. Run the updated SQL in **SQL Editor**
+
+### Step 6: Deploy to Vercel
+
+1. Go to [vercel.com](https://vercel.com) and sign up
+2. Click **Add New** → **Project**
+3. Import your GitHub repo (or push the code first)
+4. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL` = your Supabase URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your anon key
+5. Click **Deploy**
+
+### Step 7: Log In
+
+1. Go to your Vercel URL
+2. Click **Sign In**
+3. Enter your email and password
+4. You're in! Full admin access with no trial.
+
+---
+
+## Local Development
 
 ### Prerequisites
 
 - Node.js 20+
 - npm or pnpm
-- Supabase account
-- OpenAI API key
+- Supabase CLI (optional)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/jobyreding71-ai/elevare-sales-os.git
 cd elevare-sales-os
 
 # Install dependencies
 npm install
-# or
-pnpm install
 
 # Copy environment variables
 cp .env.example .env.local
@@ -50,46 +125,74 @@ cp .env.example .env.local
 Create a `.env.local` file with:
 
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# Supabase (required)
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
 
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key
+# OpenAI (for AI features)
+OPENAI_API_KEY=sk-...
 
-# Twilio (optional)
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
-TWILIO_PHONE_NUMBER=your_twilio_number
+# Twilio (optional - for calls/SMS)
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+TWILIO_PHONE_NUMBER=+1...
 
-# App
+# App URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### Database Setup
-
-1. Create a new Supabase project at https://supabase.com
-2. Run migrations:
-```bash
-cd supabase/migrations
-# Apply migrations in order
-```
-3. Seed the database with demo data
-
-### Development
+### Run Locally
 
 ```bash
 npm run dev
-# or
-pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+Open [http://localhost:3000](http://localhost:3000)
 
-## Deployment
+---
 
-### Deploy to Vercel (Recommended)
+## Database Schema Overview
+
+```
+users ──────────┐
+  │             │
+  ▼             │
+leads ◄─────────┼─────────► leads_activities
+  │             │
+  ├──► calls    │
+  │             │
+  ├──► tasks    │
+  │             │
+  ├──► appointments
+  │             │
+  └──► policies ◄─┴──► commissions
+                      │
+                      ▼
+               ai_coaching_reports
+                      ▲
+                      │
+               calls ──┘
+```
+
+### Tables
+
+| Table | Description |
+|-------|-------------|
+| `users` | Agent profiles with roles (owner, agent, manager, admin) |
+| `leads` | Prospect information with AI scoring |
+| `calls` | Call records with AI transcripts and summaries |
+| `tasks` | Follow-up tasks with due dates and priorities |
+| `appointments` | Scheduled meetings with leads |
+| `policies` | Insurance policies and applications |
+| `commissions` | Commission tracking and renewals |
+| `lead_activities` | Activity timeline for each lead |
+| `ai_coaching_reports` | AI-generated coaching feedback |
+
+---
+
+## Deployment Options
+
+### Vercel (Recommended)
 
 ```bash
 # Install Vercel CLI
@@ -101,28 +204,14 @@ vercel --prod
 
 Or connect your GitHub repo to Vercel for automatic deployments.
 
-### Deploy to Netlify
+### Netlify
 
-1. Install Netlify CLI:
 ```bash
 npm i -g netlify-cli
-```
-
-2. Deploy:
-```bash
 netlify deploy --prod --dir=.next
 ```
 
-Or connect your GitHub repo to Netlify.
-
-### Manual Netlify Deploy
-
-1. Build the project:
-```bash
-npm run build
-```
-
-2. Deploy the `.next` folder to Netlify via their dashboard.
+---
 
 ## Project Structure
 
@@ -136,7 +225,8 @@ elevare-sales-os/
 │   │   ├── dashboard/
 │   │   ├── leads/
 │   │   │   └── [id]/
-│   │   └── pipeline/
+│   │   ├── pipeline/
+│   │   └── commissions/
 │   ├── api/
 │   │   ├── ai/analyze/
 │   │   ├── calls/
@@ -145,13 +235,10 @@ elevare-sales-os/
 │   ├── layout.tsx
 │   └── page.tsx
 ├── components/
-│   ├── ui/
-│   ├── dashboard/
-│   ├── leads/
-│   └── pipeline/
+│   └── ui/
 ├── lib/
 │   ├── supabase/
-│   ├── openai/
+│   ├── hooks/
 │   └── utils/
 ├── supabase/
 │   └── migrations/
@@ -165,8 +252,35 @@ elevare-sales-os/
 | `/api/leads` | GET, POST | List/Create leads |
 | `/api/leads/[id]` | GET, PATCH, DELETE | Lead operations |
 | `/api/calls` | GET, POST | List/Create calls |
+| `/api/tasks` | GET, POST | Task management |
+| `/api/appointments` | GET, POST, PATCH | Appointments |
+| `/api/policies` | GET, POST | Policy management |
 | `/api/ai/analyze` | POST | AI call analysis |
 | `/api/webhooks/twilio` | POST | Twilio webhooks |
+
+---
+
+## Troubleshooting
+
+### "Missing Supabase environment variables"
+
+1. Make sure `.env.local` exists with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+2. Restart the dev server after adding env vars
+
+### "User not found" after login
+
+1. Go to Supabase Dashboard → SQL Editor
+2. Run: `SELECT id, email FROM auth.users;`
+3. If your user exists, check that the `public.users` table has a matching record
+4. The `public.users.id` must match `auth.users.id`
+
+### Database migration errors
+
+1. Check that RLS is enabled on all tables
+2. Make sure the `uuid-ossp` extension is enabled
+3. Try running migrations one at a time
+
+---
 
 ## License
 

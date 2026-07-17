@@ -1,0 +1,2 @@
+-- Elevare Sales OS - Seed Data (Empty)
+-- No seed data - app works with real data only

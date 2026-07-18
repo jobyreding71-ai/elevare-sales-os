@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { signInWithEmail, signInWithGoogle, signInWithMagicLink, supabase } from "@/lib/supabase/client";
 import { Button, Input, Card } from "@/components/ui";
-import { Sparkles, Mail, Lock, AlertCircle, ArrowRight, Check } from "lucide-react";
+import { Sparkles, Mail, Lock, AlertCircle, ArrowRight, Check, Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -71,8 +72,11 @@ export default function LoginPage() {
       console.log("Session created:", session?.user?.email);
 
       if (session) {
-        // Force a page reload to ensure middleware picks up the session
-        window.location.href = "/dashboard";
+        setLoginSuccess(true);
+        // Redirect after showing success state - use full page navigation
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 1500);
       } else {
         throw new Error("No session created");
       }
@@ -150,6 +154,19 @@ export default function LoginPage() {
               </div>
             )}
 
+            {loginSuccess && (
+              <div className="flex flex-col items-center justify-center py-8 mb-6">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4 animate-pulse">
+                  <Check className="w-8 h-8 text-emerald-400" />
+                </div>
+                <h2 className="text-xl font-semibold text-text-primary mb-2">
+                  Welcome back!
+                </h2>
+                <p className="text-text-secondary mb-4">Redirecting to your dashboard...</p>
+                <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
+              </div>
+            )}
+
             {/* Debug Info - Remove in production */}
             <details className="mt-4 p-3 bg-surface/50 rounded-lg text-xs">
               <summary className="cursor-pointer text-text-muted hover:text-text-secondary">
@@ -179,7 +196,7 @@ export default function LoginPage() {
                   Try again
                 </button>
               </div>
-            ) : (
+            ) : !loginSuccess && (
               <>
                 {/* Google Sign In */}
                 <Button

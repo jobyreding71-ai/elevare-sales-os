@@ -1,56 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// List of public routes that don't require authentication
-const publicRoutes = [
-  "/",
-  "/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-  "/api/auth/callback",
-];
-
-// Helper to check if user has Supabase auth cookies
-function hasSupabaseAuthCookies(request: NextRequest): boolean {
-  const cookies = request.cookies.getAll();
-
-  // Check for various Supabase cookie patterns
-  // Supabase v2 uses cookies like: sb-[project-ref]-auth-token
-  const hasAuthToken = cookies.some(
-    (cookie) =>
-      cookie.name.includes("auth-token") ||
-      cookie.name.includes("supabase-auth") ||
-      cookie.name === "sb-access-token" ||
-      cookie.name === "sb-refresh-token"
-  );
-
-  return hasAuthToken;
-}
+// Note: Auth protection is handled client-side via Supabase
+// The middleware only handles static file serving
+// This allows SPA routing to work properly with Supabase auth
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Check if the current path is a public route
-  const isPublicRoute = publicRoutes.some((route) =>
-    pathname === route || pathname.startsWith("/api/auth")
-  );
-
-  // Check for auth using cookie patterns
-  const hasAuthToken = hasSupabaseAuthCookies(request);
-
-  // Redirect to login if accessing protected route without auth
-  if (!isPublicRoute && !hasAuthToken) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // Redirect to dashboard if accessing auth routes while logged in
-  if (hasAuthToken && (pathname === "/login" || pathname === "/register")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
+  // Let all requests pass through
+  // Client-side auth handles redirects based on session state
   return NextResponse.next();
 }
 

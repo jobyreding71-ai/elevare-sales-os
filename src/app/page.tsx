@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, ArrowRight, Shield, Zap, BarChart3, Users, Calendar, DollarSign } from "lucide-react";
+import { Sparkles, ArrowRight, Shield, Zap, BarChart3, Users, Calendar, DollarSign, ChevronDown, Settings, LogOut, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, Avatar } from "@/components/ui";
+import { useAuth } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 const features = [
   {
@@ -47,6 +49,20 @@ const features = [
 
 export default function HomePage() {
   const router = useRouter();
+  const { user, isLoading, signOut } = useAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (user && !isLoading) {
+      router.push("/dashboard");
+    }
+  }, [user, isLoading, router]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    window.location.href = "/login";
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,21 +70,85 @@ export default function HomePage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold text-text-primary">Elevare</span>
               <span className="text-xs text-emerald-400 font-medium">Sales OS</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/login">
-                <Button variant="ghost">Sign In</Button>
-              </Link>
-              <Link href="/register">
-                <Button>Start Free Trial</Button>
-              </Link>
-            </div>
+            </Link>
+
+            {/* Auth Section - Show profile or login buttons */}
+            {isLoading ? (
+              <div className="w-8 h-8 rounded-full bg-surface animate-pulse" />
+            ) : user ? (
+              /* User is signed in - show profile dropdown */
+              <div className="relative">
+                <button
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-surface transition-colors"
+                >
+                  <Avatar name={user.user_metadata?.full_name || user.email || "User"} size="sm" />
+                  <span className="text-sm font-medium text-text-primary hidden sm:block">
+                    {user.user_metadata?.full_name || user.email?.split("@")[0]}
+                  </span>
+                  <ChevronDown className={cn(
+                    "w-4 h-4 text-text-muted transition-transform",
+                    profileOpen && "rotate-180"
+                  )} />
+                </button>
+
+                {profileOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setProfileOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-50 py-2">
+                      <div className="px-4 py-3 border-b border-border">
+                        <p className="text-sm font-medium text-text-primary">
+                          {user.user_metadata?.full_name || "User"}
+                        </p>
+                        <p className="text-xs text-text-muted truncate">{user.email}</p>
+                      </div>
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface transition-colors"
+                        onClick={() => setProfileOpen(false)}
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        Dashboard
+                      </Link>
+                      <Link
+                        href="/settings"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface transition-colors"
+                        onClick={() => setProfileOpen(false)}
+                      >
+                        <Settings className="w-4 h-4" />
+                        Settings
+                      </Link>
+                      <button
+                        onClick={handleSignOut}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-surface transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              /* User is not signed in - show login buttons */
+              <div className="flex items-center gap-4">
+                <Link href="/login">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link href="/register">
+                  <Button>Start Free Trial</Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </nav>

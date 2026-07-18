@@ -4,9 +4,9 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  // Set root directory for turbopack
-  turbopack: {
-    root: "/workspace/elevare-sales-os",
+  // Fix React version compatibility
+  experimental: {
+    reactCompiler: false,
   },
 };
 

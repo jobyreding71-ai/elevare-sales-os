@@ -2,6 +2,7 @@
 
 import { useState, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout";
 import { Card, Button, Badge, Avatar, Modal, Input, Tabs, Skeleton } from "@/components/ui";
 import { useLead, useTasks } from "@/lib/hooks";
@@ -33,6 +34,8 @@ import {
   XCircle,
   TrendingUp,
   Target,
+  Loader2,
+  Send,
 } from "lucide-react";
 
 // Mock data for fallback
@@ -71,9 +74,15 @@ const aiInsights = {
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLogCallOpen, setIsLogCallOpen] = useState(false);
+  const [isSMSOpen, setIsSMSOpen] = useState(false);
+  const [smsMessage, setSmsMessage] = useState("");
+  const [isSendingSMS, setIsSendingSMS] = useState(false);
+  const [smsError, setSmsError] = useState<string | null>(null);
+  const [smsSuccess, setSmsSuccess] = useState(false);
 
   const { lead, isLoading } = useLead(resolvedParams.id);
   const { tasks } = useTasks({ leadId: resolvedParams.id });
@@ -183,6 +192,80 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     return age;
   };
 
+  // Handle sending SMS
+  const handleSendSMS = async () => {
+    if (!smsMessage.trim()) {
+      setSmsError("Please enter a message");
+      return;
+    }
+
+    if (!leadData.phone) {
+      setSmsError("No phone number available for this lead");
+      return;
+    }
+
+    setIsSendingSMS(true);
+    setSmsError(null);
+    setSmsSuccess(false);
+
+    try {
+      // Format phone number (ensure it has + prefix)
+      const phone = leadData.phone.replace(/\D/g, "");
+      const formattedPhone = phone.startsWith("1") ? `+${phone}` : `+1${phone}`;
+
+      const response = await fetch("/api/twilio/sms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: formattedPhone,
+          message: smsMessage,
+          leadName: `${leadData.first_name} ${leadData.last_name}`,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send SMS");
+      }
+
+      setSmsSuccess(true);
+      setSmsMessage("");
+
+      // Log the activity
+      await fetch("/api/leads/activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: resolvedParams.id,
+          activity_type: "sms",
+          content: `SMS sent: ${smsMessage.substring(0, 50)}${smsMessage.length > 50 ? "..." : ""}`,
+        }),
+      }).catch(console.error);
+
+      // Close modal after short delay
+      setTimeout(() => {
+        setIsSMSOpen(false);
+        setSmsSuccess(false);
+      }, 2000);
+    } catch (error) {
+      console.error("SMS Error:", error);
+      setSmsError(error instanceof Error ? error.message : "Failed to send SMS");
+    } finally {
+      setIsSendingSMS(false);
+    }
+  };
+
+  // Quick SMS templates
+  const smsTemplates = [
+    { label: "Introduction", text: `Hi ${leadData.first_name}, thanks for your interest in life insurance. I'm here to help you find the right coverage for your family.` },
+    { label: "Follow Up", text: `Hi ${leadData.first_name}, I wanted to follow up on our conversation. Do you have any questions I can help answer?` },
+    { label: "Appointment Reminder", text: `Hi ${leadData.first_name}, just a reminder about our upcoming appointment. Looking forward to speaking with you!` },
+    { label: "Quote Ready", text: `Hi ${leadData.first_name}, great news! I've prepared some quotes for you. When would be a good time to go over them?` },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -246,7 +329,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               <Calendar className="w-4 h-4 mr-2" />
               Schedule
             </Button>
-            <Button variant="secondary">
+            <Button variant="secondary" onClick={() => setIsSMSOpen(true)}>
               <MessageSquare className="w-4 h-4 mr-2" />
               Send SMS
             </Button>
@@ -710,6 +793,126 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <Button>Log Call</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Send SMS Modal */}
+      <Modal
+        isOpen={isSMSOpen}
+        onClose={() => {
+          setIsSMSOpen(false);
+          setSmsError(null);
+          setSmsSuccess(false);
+          setSmsMessage("");
+        }}
+        title="Send SMS"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Recipient */}
+          <div className="p-3 rounded-lg bg-surface border border-border">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-500/20">
+                <Phone className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">Sending to</p>
+                <p className="text-text-primary font-medium">
+                  {leadData.first_name} {leadData.last_name}
+                </p>
+                <p className="text-sm text-text-secondary">
+                  {leadData.phone ? formatPhoneNumber(leadData.phone) : "No phone number"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Templates */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Quick Templates
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {smsTemplates.map((template, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => setSmsMessage(template.text)}
+                  className="px-3 py-1.5 text-sm rounded-full bg-surface border border-border hover:border-emerald-500/50 text-text-secondary hover:text-text-primary transition-all"
+                >
+                  {template.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Message Input */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Message
+            </label>
+            <textarea
+              value={smsMessage}
+              onChange={(e) => {
+                setSmsMessage(e.target.value);
+                setSmsError(null);
+              }}
+              placeholder="Type your message here..."
+              className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+              rows={4}
+              maxLength={320}
+            />
+            <div className="flex justify-between mt-1">
+              {smsError && (
+                <p className="text-sm text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {smsError}
+                </p>
+              )}
+              <p className={`text-xs ml-auto ${smsMessage.length > 280 ? "text-yellow-400" : "text-text-muted"}`}>
+                {smsMessage.length}/320
+              </p>
+            </div>
+          </div>
+
+          {/* Success Message */}
+          {smsSuccess && (
+            <div className="p-3 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center gap-2 text-emerald-400">
+              <CheckCircle className="w-5 h-5" />
+              <span>SMS sent successfully!</span>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsSMSOpen(false);
+                setSmsError(null);
+                setSmsSuccess(false);
+                setSmsMessage("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendSMS}
+              disabled={isSendingSMS || !smsMessage.trim() || !leadData.phone}
+            >
+              {isSendingSMS ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send SMS
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </DashboardLayout>
   );

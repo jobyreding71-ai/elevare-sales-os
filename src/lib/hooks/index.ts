@@ -133,6 +133,39 @@ export function useLeads(options: UseLeadsOptions = {}): UseLeadsReturn {
   };
 }
 
+export async function createLead(leadData: {
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  state?: string;
+  lead_source?: string;
+  owner_id?: string;
+}) {
+  const { data: userData } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from("leads")
+    .insert({
+      first_name: leadData.first_name,
+      last_name: leadData.last_name,
+      phone: leadData.phone || null,
+      email: leadData.email || null,
+      city: leadData.city || null,
+      state: leadData.state || null,
+      lead_source: leadData.lead_source || "Direct",
+      owner_id: leadData.owner_id || userData?.user?.id,
+      pipeline_stage: "new_lead",
+      ai_score: Math.floor(Math.random() * 30) + 10, // Random score between 10-40 for new leads
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 interface UseLeadReturn {
   lead: any;
   isLoading: boolean;

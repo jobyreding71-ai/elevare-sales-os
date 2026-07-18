@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/layout";
 import { Card, Button, Input, Badge, Avatar, Modal, Tabs, Skeleton } from "@/components/ui";
-import { useLeads } from "@/lib/hooks";
+import { useLeads, createLead } from "@/lib/hooks";
 import { cn, formatPhoneNumber, formatDate, getAIScoreColor, getAIScoreBgColor } from "@/lib/utils";
 import {
   Search,
@@ -18,6 +18,7 @@ import {
   X,
   Users,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 
 export default function LeadsPage() {
@@ -25,9 +26,80 @@ export default function LeadsPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form state for new lead
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+    email: "",
+    city: "",
+    state: "",
+    lead_source: "",
+  });
 
   // Using the useLeads hook for real data
   const { leads, isLoading, error, refetch } = useLeads();
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.first_name.trim() || !formData.last_name.trim()) {
+      alert("First name and last name are required");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createLead({
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim(),
+        phone: formData.phone.trim() || undefined,
+        email: formData.email.trim() || undefined,
+        city: formData.city.trim() || undefined,
+        state: formData.state.trim() || undefined,
+        lead_source: formData.lead_source.trim() || undefined,
+      });
+
+      // Reset form and close modal
+      setFormData({
+        first_name: "",
+        last_name: "",
+        phone: "",
+        email: "",
+        city: "",
+        state: "",
+        lead_source: "",
+      });
+      setIsAddLeadOpen(false);
+
+      // Refresh the leads list
+      await refetch();
+    } catch (err) {
+      console.error("Error creating lead:", err);
+      alert("Failed to create lead. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      first_name: "",
+      last_name: "",
+      phone: "",
+      email: "",
+      city: "",
+      state: "",
+      lead_source: "",
+    });
+  };
 
   // Filter leads based on search and tab
   const filteredLeads = (leads || []).filter((lead: any) => {
@@ -90,7 +162,10 @@ export default function LeadsPage() {
               Manage and track all your leads in one place
             </p>
           </div>
-          <Button onClick={() => setIsAddLeadOpen(true)}>
+          <Button onClick={() => {
+            resetForm();
+            setIsAddLeadOpen(true);
+          }}>
             <Plus className="w-4 h-4 mr-2" />
             Add Lead
           </Button>
@@ -283,7 +358,10 @@ export default function LeadsPage() {
                   ? "Try adjusting your search or filters"
                   : "Get started by adding your first lead"}
               </p>
-              <Button onClick={() => setIsAddLeadOpen(true)}>
+              <Button onClick={() => {
+                resetForm();
+                setIsAddLeadOpen(true);
+              }}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Lead
               </Button>
@@ -295,29 +373,138 @@ export default function LeadsPage() {
       {/* Add Lead Modal */}
       <Modal
         isOpen={isAddLeadOpen}
-        onClose={() => setIsAddLeadOpen(false)}
+        onClose={() => {
+          setIsAddLeadOpen(false);
+          resetForm();
+        }}
         title="Add New Lead"
         size="lg"
       >
-        <form className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="First Name" placeholder="John" />
-            <Input label="Last Name" placeholder="Smith" />
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                First Name *
+              </label>
+              <input
+                type="text"
+                name="first_name"
+                value={formData.first_name}
+                onChange={handleInputChange}
+                placeholder="John"
+                required
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                Last Name *
+              </label>
+              <input
+                type="text"
+                name="last_name"
+                value={formData.last_name}
+                onChange={handleInputChange}
+                placeholder="Smith"
+                required
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Phone" type="tel" placeholder="(208) 555-0100" />
-            <Input label="Email" type="email" placeholder="john@example.com" />
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                Phone
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="(208) 555-0100"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="john@example.com"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="City" placeholder="Boise" />
-            <Input label="State" placeholder="ID" />
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                City
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                placeholder="Boise"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                State
+              </label>
+              <input
+                type="text"
+                name="state"
+                value={formData.state}
+                onChange={handleInputChange}
+                placeholder="ID"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
           </div>
-          <Input label="Lead Source" placeholder="Referral, Facebook Ads, etc." />
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">
+              Lead Source
+            </label>
+            <input
+              type="text"
+              name="lead_source"
+              value={formData.lead_source}
+              onChange={handleInputChange}
+              placeholder="Referral, Facebook Ads, etc."
+              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            />
+          </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button variant="secondary" onClick={() => setIsAddLeadOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setIsAddLeadOpen(false);
+                resetForm();
+              }}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit">Add Lead</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Lead
+                </>
+              )}
+            </Button>
           </div>
         </form>
       </Modal>

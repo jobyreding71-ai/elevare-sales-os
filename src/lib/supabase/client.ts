@@ -16,26 +16,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
-    storage: {
-      // Use localStorage with cookie fallback
-      getItem: (key: string) => {
-        if (typeof window !== 'undefined') {
-          return localStorage.getItem(key);
-        }
-        return null;
-      },
-      setItem: (key: string, value: string) => {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(key, value);
-        }
-      },
-      removeItem: (key: string) => {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem(key);
-        }
-      },
-    },
+    // PKCE is only needed for OAuth flows, not email/password
+    // Removed to ensure cookies work properly for middleware
   },
 });
 

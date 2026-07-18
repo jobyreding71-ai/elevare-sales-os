@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { signInWithEmail, signInWithGoogle, signInWithMagicLink } from "@/lib/supabase/client";
+import { signInWithEmail, signInWithGoogle, signInWithMagicLink, supabase } from "@/lib/supabase/client";
 import { Button, Input, Card } from "@/components/ui";
-import { Sparkles, Mail, Lock, AlertCircle, ArrowRight } from "lucide-react";
+import { Sparkles, Mail, Lock, AlertCircle, ArrowRight, Check } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -23,6 +23,24 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log("User already authenticated:", session.user.email);
+          setIsAuthenticated(true);
+          router.push("/dashboard");
+        }
+      } catch (err) {
+        console.error("Auth check error:", err);
+      }
+    };
+    checkAuth();
+  }, [router]);
 
   const {
     register,
@@ -39,20 +57,25 @@ export default function LoginPage() {
     try {
       console.log("Attempting login with:", data.email);
 
-      // Verify Supabase is configured
-      if (typeof window === 'undefined') {
-        throw new Error("Browser environment required");
-      }
-
       const result = await signInWithEmail(data.email, data.password);
       console.log("Login successful, result:", result);
 
-      // Small delay to ensure cookies are set before navigation
-      setTimeout(() => {
-        console.log("Redirecting to dashboard...");
-        setIsLoading(false);
-        router.push("/dashboard");
-      }, 500);
+      // Verify session was created
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        throw sessionError;
+      }
+
+      console.log("Session created:", session?.user?.email);
+
+      if (session) {
+        // Force a page reload to ensure middleware picks up the session
+        window.location.href = "/dashboard";
+      } else {
+        throw new Error("No session created");
+      }
     } catch (err: unknown) {
       console.error("Login error:", err);
       const errorMessage = err instanceof Error ? err.message :
@@ -126,6 +149,17 @@ export default function LoginPage() {
                 <p className="text-sm">{error}</p>
               </div>
             )}
+
+            {/* Debug Info - Remove in production */}
+            <details className="mt-4 p-3 bg-surface/50 rounded-lg text-xs">
+              <summary className="cursor-pointer text-text-muted hover:text-text-secondary">
+                Debug Info
+              </summary>
+              <div className="mt-2 space-y-1 text-text-muted">
+                <p>Supabase URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓ Set' : '✗ Missing'}</p>
+                <p>Supabase Key: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing'}</p>
+              </div>
+            </details>
 
             {magicLinkSent ? (
               <div className="text-center py-8">

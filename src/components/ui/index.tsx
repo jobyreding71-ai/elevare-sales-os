@@ -471,7 +471,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 // Stat Card Component
 interface StatCardProps {
   title: string;
-  value: string | number;
+  value: string | number | React.ReactNode;
   change?: number;
   changeLabel?: string;
   icon?: React.ReactNode;
@@ -505,7 +505,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-text-secondary mb-1">{title}</p>
-          <p className="text-2xl font-bold text-text-primary">{value}</p>
+          <div className="text-2xl font-bold text-text-primary">{value}</div>
           {change !== undefined && (
             <div className="flex items-center mt-2">
               <span

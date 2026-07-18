@@ -11,7 +11,7 @@
  * Example WebSocket URL: wss://your-app.vercel.app/api/realtime/ws
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { supabase } from "@/lib/supabase/client";
 
 interface CopilotMessage {
   type: "audio" | "transcript" | "extracted_info" | "suggestion" | "error";
@@ -184,8 +184,6 @@ export async function updateLeadProfile(
   agentId: string
 ): Promise<void> {
   try {
-    const supabase = await createClient();
-
     // Only update fields that were extracted
     const updates: Record<string, any> = {};
 

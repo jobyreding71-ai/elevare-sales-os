@@ -178,7 +178,6 @@ export default function LoginPage() {
                   <Input
                     label="Email"
                     type="email"
-                    name="email"
                     placeholder="you@example.com"
                     icon={<Mail className="w-4 h-4" />}
                     error={errors.email?.message}
@@ -188,7 +187,6 @@ export default function LoginPage() {
                   <div className="relative">
                     <Input
                       label="Password"
-                      name="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       icon={<Lock className="w-4 h-4" />}

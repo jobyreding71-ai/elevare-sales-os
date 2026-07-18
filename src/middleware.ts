@@ -11,6 +11,23 @@ const publicRoutes = [
   "/api/auth/callback",
 ];
 
+// Helper to check if user has Supabase auth cookies
+function hasSupabaseAuthCookies(request: NextRequest): boolean {
+  const cookies = request.cookies.getAll();
+
+  // Check for various Supabase cookie patterns
+  // Supabase v2 uses cookies like: sb-[project-ref]-auth-token
+  const hasAuthToken = cookies.some(
+    (cookie) =>
+      cookie.name.includes("auth-token") ||
+      cookie.name.includes("supabase-auth") ||
+      cookie.name === "sb-access-token" ||
+      cookie.name === "sb-refresh-token"
+  );
+
+  return hasAuthToken;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -19,9 +36,8 @@ export function middleware(request: NextRequest) {
     pathname === route || pathname.startsWith("/api/auth")
   );
 
-  // Check for auth token in cookies
-  const authToken = request.cookies.get("sb-access-token")?.value;
-  const hasAuthToken = !!authToken;
+  // Check for auth using cookie patterns
+  const hasAuthToken = hasSupabaseAuthCookies(request);
 
   // Redirect to login if accessing protected route without auth
   if (!isPublicRoute && !hasAuthToken) {

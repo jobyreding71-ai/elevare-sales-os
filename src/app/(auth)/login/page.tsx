@@ -38,16 +38,27 @@ export default function LoginPage() {
 
     try {
       console.log("Attempting login with:", data.email);
+
+      // Verify Supabase is configured
+      if (typeof window === 'undefined') {
+        throw new Error("Browser environment required");
+      }
+
       const result = await signInWithEmail(data.email, data.password);
-      console.log("Login successful:", result);
-      router.push("/dashboard");
+      console.log("Login successful, result:", result);
+
+      // Small delay to ensure cookies are set before navigation
+      setTimeout(() => {
+        console.log("Redirecting to dashboard...");
+        setIsLoading(false);
+        router.push("/dashboard");
+      }, 500);
     } catch (err: unknown) {
       console.error("Login error:", err);
       const errorMessage = err instanceof Error ? err.message :
         (err as { message?: string })?.message ||
         "Unable to sign in. Please check your credentials.";
       setError(errorMessage);
-    } finally {
       setIsLoading(false);
     }
   };

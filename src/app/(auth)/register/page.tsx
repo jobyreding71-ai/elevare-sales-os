@@ -44,10 +44,16 @@ export default function RegisterPage() {
     setError(null);
 
     try {
+      console.log("Attempting registration:", data.email);
       await signUpWithEmail(data.email, data.password, data.fullName);
+      console.log("Registration successful");
       setIsSuccess(true);
-    } catch (err: any) {
-      setError(err.message || "Failed to create account");
+    } catch (err: unknown) {
+      console.error("Registration error:", err);
+      const errorMessage = err instanceof Error ? err.message :
+        (err as { message?: string })?.message ||
+        "Failed to create account. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -161,6 +167,7 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <Input
                 label="Full Name"
+                name="fullName"
                 type="text"
                 placeholder="John Smith"
                 icon={<User className="w-4 h-4" />}
@@ -170,6 +177,7 @@ export default function RegisterPage() {
 
               <Input
                 label="Email"
+                name="email"
                 type="email"
                 placeholder="you@example.com"
                 icon={<Mail className="w-4 h-4" />}
@@ -179,6 +187,7 @@ export default function RegisterPage() {
 
               <Input
                 label="Password"
+                name="password"
                 type="password"
                 placeholder="Create a strong password"
                 icon={<Lock className="w-4 h-4" />}
@@ -188,6 +197,7 @@ export default function RegisterPage() {
 
               <Input
                 label="Confirm Password"
+                name="confirmPassword"
                 type="password"
                 placeholder="Confirm your password"
                 icon={<Lock className="w-4 h-4" />}

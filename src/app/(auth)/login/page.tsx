@@ -37,10 +37,16 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await signInWithEmail(data.email, data.password);
+      console.log("Attempting login with:", data.email);
+      const result = await signInWithEmail(data.email, data.password);
+      console.log("Login successful:", result);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Invalid email or password");
+    } catch (err: unknown) {
+      console.error("Login error:", err);
+      const errorMessage = err instanceof Error ? err.message :
+        (err as { message?: string })?.message ||
+        "Unable to sign in. Please check your credentials.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -172,6 +178,7 @@ export default function LoginPage() {
                   <Input
                     label="Email"
                     type="email"
+                    name="email"
                     placeholder="you@example.com"
                     icon={<Mail className="w-4 h-4" />}
                     error={errors.email?.message}
@@ -181,6 +188,7 @@ export default function LoginPage() {
                   <div className="relative">
                     <Input
                       label="Password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       icon={<Lock className="w-4 h-4" />}

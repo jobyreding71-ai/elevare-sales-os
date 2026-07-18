@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth, useDashboardStats, useTasks, useAppointments, useLeads } from "@/lib/hooks";
 import { Card, StatCard, Badge, Skeleton } from "@/components/ui";
 import { DashboardLayout } from "@/components/layout";
@@ -68,32 +69,21 @@ export default function DashboardPage() {
   const pipelineData = getPipelineDistribution();
 
   const revenueData = [
-    { month: "Jan", revenue: 12500, leads: 12 },
-    { month: "Feb", revenue: 18200, leads: 18 },
-    { month: "Mar", revenue: 15800, leads: 15 },
-    { month: "Apr", revenue: 22100, leads: 22 },
-    { month: "May", revenue: 19500, leads: 19 },
-    { month: "Jun", revenue: 24800, leads: 25 },
+    { month: "Jan", revenue: 0, leads: 0 },
+    { month: "Feb", revenue: 0, leads: 0 },
+    { month: "Mar", revenue: 0, leads: 0 },
+    { month: "Apr", revenue: 0, leads: 0 },
+    { month: "May", revenue: 0, leads: 0 },
+    { month: "Jun", revenue: 0, leads: 0 },
   ];
 
-  const recentActivity = [
-    { type: "call", content: "Called Jennifer Martinez", time: "10 min ago", status: "completed" },
-    { type: "appointment", content: "Appointment with Brian Clark", time: "1 hour ago", status: "scheduled" },
-    { type: "lead", content: "New lead: Katherine Scott", time: "2 hours ago", status: "new" },
-    { type: "policy", content: "Policy issued for Amanda Brooks", time: "3 hours ago", status: "active" },
-    { type: "commission", content: "Commission received: $4,620", time: "5 hours ago", status: "paid" },
-  ];
+  const recentActivity: { type: string; content: string; time: string; status: string }[] = [];
 
   const upcomingTasks = tasks?.slice(0, 4).map(task => ({
     title: task.title,
     due: task.due_date ? formatDate(task.due_date) : "No due date",
     priority: task.priority || "medium"
-  })) || [
-    { title: "Call Jennifer Martinez", due: "Today, 2:00 PM", priority: "high" },
-    { title: "Prepare quote for William Chen", due: "Tomorrow, 10:00 AM", priority: "medium" },
-    { title: "Follow up with Christopher Wilson", due: "Tomorrow, 3:00 PM", priority: "high" },
-    { title: "Review application status", due: "Mar 15, 9:00 AM", priority: "low" },
-  ];
+  })) || [];
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -319,9 +309,9 @@ export default function DashboardPage() {
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-text-primary">Recent Activity</h3>
-              <button className="text-sm text-emerald-400 hover:text-emerald-300">
+              <Link href="/activity" className="text-sm text-emerald-400 hover:text-emerald-300">
                 View all
-              </button>
+              </Link>
             </div>
             <div className="space-y-4">
               {recentActivity.map((activity, index) => (
@@ -356,9 +346,9 @@ export default function DashboardPage() {
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-text-primary">Upcoming Tasks</h3>
-              <button className="text-sm text-emerald-400 hover:text-emerald-300">
+              <Link href="/tasks" className="text-sm text-emerald-400 hover:text-emerald-300">
                 View all
-              </button>
+              </Link>
             </div>
             <div className="space-y-3">
               {upcomingTasks.map((task, index) => (
@@ -394,44 +384,46 @@ export default function DashboardPage() {
           <Card>
             <h3 className="text-lg font-semibold text-text-primary mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3">
-              <button className="p-4 rounded-xl bg-surface hover:bg-card-hover border border-border transition-all group">
+              <Link href="/leads" className="p-4 rounded-xl bg-surface hover:bg-card-hover border border-border transition-all group">
                 <Users className="w-6 h-6 text-emerald-400 mb-2" />
                 <p className="text-sm font-medium text-text-primary group-hover:text-emerald-400">
                   Add Lead
                 </p>
-              </button>
-              <button className="p-4 rounded-xl bg-surface hover:bg-card-hover border border-border transition-all group">
+              </Link>
+              <Link href="/calls" className="p-4 rounded-xl bg-surface hover:bg-card-hover border border-border transition-all group">
                 <Phone className="w-6 h-6 text-blue-400 mb-2" />
                 <p className="text-sm font-medium text-text-primary group-hover:text-blue-400">
                   Log Call
                 </p>
-              </button>
-              <button className="p-4 rounded-xl bg-surface hover:bg-card-hover border border-border transition-all group">
+              </Link>
+              <Link href="/appointments" className="p-4 rounded-xl bg-surface hover:bg-card-hover border border-border transition-all group">
                 <Calendar className="w-6 h-6 text-yellow-400 mb-2" />
                 <p className="text-sm font-medium text-text-primary group-hover:text-yellow-400">
                   Schedule
                 </p>
-              </button>
-              <button className="p-4 rounded-xl bg-surface hover:bg-card-hover border border-border transition-all group">
+              </Link>
+              <Link href="/pipeline" className="p-4 rounded-xl bg-surface hover:bg-card-hover border border-border transition-all group">
                 <FileText className="w-6 h-6 text-purple-400 mb-2" />
                 <p className="text-sm font-medium text-text-primary group-hover:text-purple-400">
-                  New Quote
+                  Pipeline
                 </p>
-              </button>
+              </Link>
             </div>
 
-            {/* Alerts */}
-            <div className="mt-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-text-primary">Attention Needed</p>
-                  <p className="text-xs text-text-secondary mt-1">
-                    3 leads have been in "Contact Attempted" for over 7 days
-                  </p>
+            {/* Alerts - Only show if there are real tasks needing attention */}
+            {tasks && tasks.filter(t => t.priority === 'high' && !t.completed).length > 0 && (
+              <div className="mt-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Attention Needed</p>
+                    <p className="text-xs text-text-secondary mt-1">
+                      {tasks.filter(t => t.priority === 'high' && !t.completed).length} high priority tasks require your attention
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </Card>
         </div>
       </div>

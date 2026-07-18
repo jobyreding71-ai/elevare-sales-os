@@ -45,60 +45,46 @@ export default function CommissionsPage() {
 
   // Calculate commission stats from real data
   const commissionStats = {
-    grossCommission: commissions?.reduce((sum, c) => sum + (c.gross_premium * c.commission_rate / 100), 0) || 48750,
-    paidCommission: commissions?.reduce((sum, c) => sum + c.paid_amount, 0) || 38500,
-    pendingCommission: commissions?.reduce((sum, c) => sum + (c.gross_premium * c.commission_rate / 100) - c.paid_amount, 0) || 10250,
-    monthlyRenewalIncome: commissions?.reduce((sum, c) => sum + c.renewal_amount, 0) || 4200,
-    chargebacks: commissions?.reduce((sum, c) => sum + c.chargeback_amount, 0) || 1850,
-    advancesPaid: 12000,
-    advancesOutstanding: 3500,
+    grossCommission: commissions?.reduce((sum, c) => sum + (c.gross_premium * c.commission_rate / 100), 0) || 0,
+    paidCommission: commissions?.reduce((sum, c) => sum + c.paid_amount, 0) || 0,
+    pendingCommission: commissions?.reduce((sum, c) => sum + (c.gross_premium * c.commission_rate / 100) - c.paid_amount, 0) || 0,
+    monthlyRenewalIncome: commissions?.reduce((sum, c) => sum + c.renewal_amount, 0) || 0,
+    chargebacks: commissions?.reduce((sum, c) => sum + c.chargeback_amount, 0) || 0,
+    advancesPaid: 0,
+    advancesOutstanding: 0,
   };
 
-  const commissionByCarrier = [
-    { name: "Northwestern Mutual", value: 18500, color: "#10B981" },
-    { name: "Lincoln Financial", value: 14200, color: "#3B82F6" },
-    { name: "Pacific Life", value: 9800, color: "#D4AF37" },
-    { name: "John Hancock", value: 6250, color: "#8B5CF6" },
-  ];
+  const commissionByCarrier: { name: string; value: number; color: string }[] = [];
 
   const monthlyCommissions = [
-    { month: "Jan", gross: 6200, paid: 5800, renewal: 400 },
-    { month: "Feb", gross: 8500, paid: 7200, renewal: 800 },
-    { month: "Mar", gross: 7800, paid: 6500, renewal: 900 },
-    { month: "Apr", gross: 9200, paid: 8500, renewal: 1000 },
-    { month: "May", gross: 10500, paid: 9000, renewal: 1100 },
-    { month: "Jun", gross: 6550, paid: 5500, renewal: 1000 },
+    { month: "Jan", gross: 0, paid: 0, renewal: 0 },
+    { month: "Feb", gross: 0, paid: 0, renewal: 0 },
+    { month: "Mar", gross: 0, paid: 0, renewal: 0 },
+    { month: "Apr", gross: 0, paid: 0, renewal: 0 },
+    { month: "May", gross: 0, paid: 0, renewal: 0 },
+    { month: "Jun", gross: 0, paid: 0, renewal: 0 },
   ];
 
   const cashFlowForecast = [
-    { month: "Jul", expected: 8200, type: "forecast" },
-    { month: "Aug", expected: 7800, type: "forecast" },
-    { month: "Sep", expected: 9500, type: "forecast" },
-    { month: "Oct", expected: 11200, type: "forecast" },
-    { month: "Nov", expected: 9800, type: "forecast" },
-    { month: "Dec", expected: 12500, type: "forecast" },
+    { month: "Jul", expected: 0, type: "forecast" },
+    { month: "Aug", expected: 0, type: "forecast" },
+    { month: "Sep", expected: 0, type: "forecast" },
+    { month: "Oct", expected: 0, type: "forecast" },
+    { month: "Nov", expected: 0, type: "forecast" },
+    { month: "Dec", expected: 0, type: "forecast" },
   ];
 
   const recentCommissions = commissions?.slice(0, 5).map((c: any) => ({
     id: c.id,
-    policy: `Policy #${c.policy_id.slice(0, 8)}`,
+    policy: `Policy #${c.policy_id?.slice(0, 8) || 'N/A'}`,
     carrier: "Insurance Carrier",
     amount: c.gross_premium * c.commission_rate / 100,
     type: c.renewal_amount > 0 ? "renewal" : "new",
     status: c.commission_status,
     date: c.created_at,
-  })) || [
-    { id: "1", policy: "Jennifer Martinez - Whole Life", carrier: "Northwestern Mutual", amount: 4200, type: "new", status: "paid", date: "2024-06-15" },
-    { id: "2", policy: "Robert Anderson - Term Life", carrier: "Lincoln Financial", amount: 1850, type: "renewal", status: "paid", date: "2024-06-10" },
-    { id: "3", policy: "Amanda Brooks - Whole Life", carrier: "Northwestern Mutual", amount: 5800, type: "new", status: "pending", date: "2024-06-08" },
-    { id: "4", policy: "Christopher Wilson - UL", carrier: "Pacific Life", amount: 2100, type: "renewal", status: "pending", date: "2024-06-05" },
-    { id: "5", policy: "Michael Johnson - Term Life", carrier: "John Hancock", amount: 3200, type: "new", status: "pending", date: "2024-06-01" },
-  ];
+  })) || [];
 
-  const pendingAdvances = [
-    { id: "1", lead: "Amanda Brooks", amount: 3500, date: "2024-06-08", status: "pending" },
-    { id: "2", lead: "Christopher Wilson", amount: 1800, date: "2024-06-05", status: "pending" },
-  ];
+  const pendingAdvances: { id: string; lead: string; amount: number; date: string; status: string }[] = [];
 
   const tabs = [
     { id: "overview", label: "Overview" },
@@ -573,35 +559,9 @@ export default function CommissionsPage() {
 
               <Card>
                 <h3 className="text-lg font-semibold text-text-primary mb-4">Production Leaderboard</h3>
-                <div className="space-y-3">
-                  {[
-                    { rank: 1, name: "You", amount: 48750, trend: "up" },
-                    { rank: 2, name: "Sarah Chen", amount: 42100, trend: "up" },
-                    { rank: 3, name: "Marcus Johnson", amount: 38500, trend: "down" },
-                  ].map((agent) => (
-                    <div key={agent.rank} className="flex items-center gap-3 p-3 rounded-lg bg-surface">
-                      <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
-                        agent.rank === 1 ? "bg-yellow-500/20 text-yellow-400" :
-                        agent.rank === 2 ? "bg-gray-400/20 text-gray-400" :
-                        "bg-orange-600/20 text-orange-600"
-                      )}>
-                        {agent.rank}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-text-primary">{agent.name}</p>
-                        <p className="text-xs text-text-muted">YTD Production</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-text-primary">{formatCurrency(agent.amount)}</p>
-                        {agent.trend === "up" ? (
-                          <ArrowUpRight className="w-4 h-4 text-emerald-400 ml-auto" />
-                        ) : (
-                          <ArrowDownRight className="w-4 h-4 text-red-400 ml-auto" />
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div className="py-8 text-center text-text-muted">
+                  <p>No production data yet</p>
+                  <p className="text-sm mt-1">Production data will appear here once you have active policies</p>
                 </div>
               </Card>
             </div>
